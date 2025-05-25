@@ -1,0 +1,79 @@
+name: Canary Deployment
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  canary-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ap-south-1
+      PROCESSING_LAMBDA_NAME: ProcessingLambda
+      ROUTING_LAMBDA_NAME: RoutingLambda
+      CANARY_ALIAS_NAME: canary
+      STABLE_ALIAS_NAME: stable
+      CANARY_PERCENT: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy CDK
+        run: npx cdk deploy --require-approval never
+
+      - name: Publish new version of processing lambda
+        id: publish
+        run: |
+          VERSION=$(aws lambda publish-version \
+            --function-name $PROCESSING_LAMBDA_NAME \
+            --query 'Version' --output text)
+          echo "Published version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update canary alias to new version
+        run: |
+          aws lambda update-alias \
+            --function-name $PROCESSING_LAMBDA_NAME \
+            --name $CANARY_ALIAS_NAME \
+            --function-version ${{ steps.publish.outputs.VERSION }}
+
+      - name: Get alias ARNs
+        id: alias_arns
+        run: |
+          STABLE_ARN=$(aws lambda get-alias \
+            --function-name $PROCESSING_LAMBDA_NAME \
+            --name $STABLE_ALIAS_NAME \
+            --query 'AliasArn' --output text)
+          CANARY_ARN=$(aws lambda get-alias \
+            --function-name $PROCESSING_LAMBDA_NAME \
+            --name $CANARY_ALIAS_NAME \
+            --query 'AliasArn' --output text)
+          echo "STABLE_ALIAS_ARN=$STABLE_ARN" >> $GITHUB_OUTPUT
+          echo "CANARY_ALIAS_ARN=$CANARY_ARN" >> $GITHUB_OUTPUT
+
+      - name: Update Routing Lambda environment
+        run: |
+          aws lambda update-function-configuration \
+            --function-name $ROUTING_LAMBDA_NAME \
+            --environment "Variables={
+              CANARY_PERCENT=${{ env.CANARY_PERCENT }},
+              STABLE_ALIAS_ARN='${{ steps.alias_arns.outputs.STABLE_ALIAS_ARN }}',
+              CANARY_ALIAS_ARN='${{ steps.alias_arns.outputs.CANARY_ALIAS_ARN }}'
+            }"
