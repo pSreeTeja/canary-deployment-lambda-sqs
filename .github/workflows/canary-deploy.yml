@@ -64,6 +64,22 @@ jobs:
           fi
           set -e
 
+      - name: Ensure canary alias exists (only creates if not present)
+        run: |
+          set +e
+          EXISTS=$(aws lambda get-alias \
+            --function-name $PROCESSING_LAMBDA_NAME \
+            --name $CANARY_ALIAS_NAME \
+            --query 'FunctionVersion' --output text 2>/dev/null)
+          if [ "$EXISTS" == "None" ] || [ -z "$EXISTS" ]; then
+            echo "Canary alias does not exist, creating..."
+            aws lambda create-alias \
+              --function-name $PROCESSING_LAMBDA_NAME \
+              --name $CANARY_ALIAS_NAME \
+              --function-version ${{ steps.publish.outputs.VERSION }}
+          fi
+          set -e
+
       - name: Update canary alias to new version
         run: |
           aws lambda update-alias \
