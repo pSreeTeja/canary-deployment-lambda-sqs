@@ -20,7 +20,7 @@ export class CanaryDepStack extends cdk.Stack {
       functionName: 'ProcessingLambda',
       runtime: lambda.Runtime.PYTHON_3_11,
       code: lambda.Code.fromAsset('lambda/processing'),
-      handler: 'index.lambda_handler',
+      handler: 'index.handler',
     });
 
     // Routing Lambda
@@ -28,7 +28,7 @@ export class CanaryDepStack extends cdk.Stack {
       functionName: 'RoutingLambda',
       runtime: lambda.Runtime.PYTHON_3_11,
       code: lambda.Code.fromAsset('lambda/routing'),
-      handler: 'index.lambda_handler',
+      handler: 'index.handler',
       environment: {
         STABLE_ALIAS_ARN: '', // Will be filled by GitHub workflow
         CANARY_ALIAS_ARN: '', // Will be filled by GitHub workflow
