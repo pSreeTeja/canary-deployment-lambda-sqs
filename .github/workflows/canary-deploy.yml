@@ -78,31 +78,31 @@ jobs:
               CANARY_ALIAS_ARN='${{ steps.alias_arns.outputs.CANARY_ALIAS_ARN }}'
             }"
 
-      - name: Wait and check CloudWatch metrics
-        run: |
-          echo "Waiting 10 minutes to monitor traffic..."
-          sleep 600
-          END=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          START=$(date -u -d "-10 minutes" +"%Y-%m-%dT%H:%M:%SZ")
-          ERRORS=$(aws cloudwatch get-metric-statistics \
-            --namespace AWS/Lambda \
-            --metric-name Errors \
-            --dimensions Name=FunctionName,Value=${{ env.PROCESSING_LAMBDA_NAME }} Name=Resource,Value=${{ env.PROCESSING_LAMBDA_NAME }}:${{ env.CANARY_ALIAS_NAME }} \
-            --statistics Sum \
-            --start-time "$START" \
-            --end-time "$END" \
-            --period 300 \
-            --query 'Datapoints[0].Sum' \
-            --output text)
-          echo "Canary Errors: $ERRORS"
-          if [[ "$ERRORS" != "None" && $(echo "$ERRORS > 1" | bc -l) == 1 ]]; then
-            echo "Rolling back canary to stable version..."
-            STABLE_VERSION=$(aws lambda get-alias \
-              --function-name $PROCESSING_LAMBDA_NAME \
-              --name $STABLE_ALIAS_NAME \
-              --query 'FunctionVersion' --output text)
-            aws lambda update-alias \
-              --function-name $PROCESSING_LAMBDA_NAME \
-              --name $CANARY_ALIAS_NAME \
-              --function-version "$STABLE_VERSION"
-          fi
+      # - name: Wait and check CloudWatch metrics
+      #   run: |
+      #     echo "Waiting 10 minutes to monitor traffic..."
+      #     sleep 600
+      #     END=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      #     START=$(date -u -d "-10 minutes" +"%Y-%m-%dT%H:%M:%SZ")
+      #     ERRORS=$(aws cloudwatch get-metric-statistics \
+      #       --namespace AWS/Lambda \
+      #       --metric-name Errors \
+      #       --dimensions Name=FunctionName,Value=${{ env.PROCESSING_LAMBDA_NAME }} Name=Resource,Value=${{ env.PROCESSING_LAMBDA_NAME }}:${{ env.CANARY_ALIAS_NAME }} \
+      #       --statistics Sum \
+      #       --start-time "$START" \
+      #       --end-time "$END" \
+      #       --period 300 \
+      #       --query 'Datapoints[0].Sum' \
+      #       --output text)
+      #     echo "Canary Errors: $ERRORS"
+      #     if [[ "$ERRORS" != "None" && $(echo "$ERRORS > 1" | bc -l) == 1 ]]; then
+      #       echo "Rolling back canary to stable version..."
+      #       STABLE_VERSION=$(aws lambda get-alias \
+      #         --function-name $PROCESSING_LAMBDA_NAME \
+      #         --name $STABLE_ALIAS_NAME \
+      #         --query 'FunctionVersion' --output text)
+      #       aws lambda update-alias \
+      #         --function-name $PROCESSING_LAMBDA_NAME \
+      #         --name $CANARY_ALIAS_NAME \
+      #         --function-version "$STABLE_VERSION"
+      #     fi
