@@ -9,53 +9,33 @@ export class CanaryDepStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // 1. Create the SQS queue
-    const mainQueue = new sqs.Queue(this, 'MainQueue',{
-      queueName: 'MainQueue',
-      visibilityTimeout: cdk.Duration.seconds(30)
-    });
+    // Create SQS Queue
+    const mainQueue = new sqs.Queue(this, 'MainQueue');
 
-    // 2. Processing Lambda Function
+    // Processing Lambda (versioning handled in GitHub workflow)
     const processingLambda = new lambda.Function(this, 'ProcessingLambda', {
-      runtime: lambda.Runtime.PYTHON_3_13,
+      runtime: lambda.Runtime.PYTHON_3_11,
       code: lambda.Code.fromAsset('lambda/processing'),
-      handler: 'index.handler',
-      functionName: 'ProcessingLambda',
+      handler: 'index.lambda_handler',
     });
 
-    // 3. Publish a version
-    const version = processingLambda.currentVersion;
-
-    // 4. Create Aliases
-    const stableAlias = new lambda.Alias(this, 'StableAlias', {
-      aliasName: 'stable',
-      version: version,
-    });
-
-    const canaryAlias = new lambda.Alias(this, 'CanaryAlias', {
-      aliasName: 'canary',
-      version: version, // Update manually later for new versions
-    });
-
-    // 5. Routing Lambda Function
+    // Routing Lambda
     const routingLambda = new lambda.Function(this, 'RoutingLambda', {
-      runtime: lambda.Runtime.PYTHON_3_13,
+      runtime: lambda.Runtime.PYTHON_3_11,
       code: lambda.Code.fromAsset('lambda/routing'),
-      handler: 'index.handler',
-      functionName: 'RoutingLambda',
+      handler: 'index.lambda_handler',
       environment: {
-        STABLE_ALIAS_ARN: stableAlias.functionArn,
-        CANARY_ALIAS_ARN: canaryAlias.functionArn,
-        CANARY_PERCENT: '10',
+        STABLE_ALIAS_ARN: '', // Will be filled by GitHub workflow
+        CANARY_ALIAS_ARN: '', // Will be filled by GitHub workflow
+        CANARY_PERCENT: '0',  // Default to 0 until GitHub sets it
       },
     });
 
-    // 6. Grant permissions
+    // Permissions
     mainQueue.grantConsumeMessages(routingLambda);
-    stableAlias.grantInvoke(routingLambda);
-    canaryAlias.grantInvoke(routingLambda);
+    processingLambda.grantInvoke(routingLambda); // Allow invoke for all versions
 
-    // 7. Add mainQueue as event source
+    // SQS trigger to Routing Lambda
     routingLambda.addEventSource(new lambdaEventSources.SqsEventSource(mainQueue));
 
     mainQueue.addToResourcePolicy(new iam.PolicyStatement({
