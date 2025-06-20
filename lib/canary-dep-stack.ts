@@ -10,7 +10,10 @@ export class CanaryDepStack extends cdk.Stack {
     super(scope, id, props);
 
     // Create SQS Queue
-    const mainQueue = new sqs.Queue(this, 'MainQueue');
+    const mainQueue = new sqs.Queue(this, 'MainQueue',{
+      queueName: 'MainQueue',
+      visibilityTimeout: cdk.Duration.seconds(30),
+    });
 
     // Processing Lambda (versioning handled in GitHub workflow)
     const processingLambda = new lambda.Function(this, 'ProcessingLambda', {
@@ -38,7 +41,9 @@ export class CanaryDepStack extends cdk.Stack {
     processingLambda.grantInvoke(routingLambda); // Allow invoke for all versions
 
     // SQS trigger to Routing Lambda
-    routingLambda.addEventSource(new lambdaEventSources.SqsEventSource(mainQueue));
+    routingLambda.addEventSource(new lambdaEventSources.SqsEventSource(mainQueue,{
+      batchSize:1
+    }));
 
     mainQueue.addToResourcePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
