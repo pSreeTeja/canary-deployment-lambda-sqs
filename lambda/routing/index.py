@@ -11,7 +11,7 @@ lambda_client = boto3.client('lambda')
 
 STABLE_ALIAS_ARN = os.environ['STABLE_ALIAS_ARN']
 CANARY_ALIAS_ARN = os.environ['CANARY_ALIAS_ARN']
-CANARY_PERCENT = int(os.environ.get('CANARY_PERCENT', '0'))  # 0 to 100
+CANARY_PERCENT = int(os.environ.get('CANARY_PERCENT', '0')) 
 
 
 def handler(event, context):
@@ -21,7 +21,7 @@ def handler(event, context):
         try:
             response = lambda_client.invoke(
                 FunctionName=target_arn,
-                InvocationType='Event',  # async
+                InvocationType='Event',
                 Payload=json.dumps(record)
             )
             logger.info(f"Invoked {target_arn}, StatusCode: {response['StatusCode']}")
@@ -30,5 +30,5 @@ def handler(event, context):
 
     return {
         'statusCode': 200,
-        'body': json.dumps('Routing completed')
+        'body': json.dumps('Routing completed Successfully')
     }

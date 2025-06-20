@@ -9,7 +9,6 @@ export class CanaryDepStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Create SQS Queue
     const mainQueue = new sqs.Queue(this, 'MainQueue',{
       queueName: 'MainQueue',
       visibilityTimeout: cdk.Duration.seconds(30),
@@ -30,17 +29,17 @@ export class CanaryDepStack extends cdk.Stack {
       code: lambda.Code.fromAsset('lambda/routing'),
       handler: 'index.handler',
       environment: {
-        STABLE_ALIAS_ARN: '', // Will be filled by GitHub workflow
-        CANARY_ALIAS_ARN: '', // Will be filled by GitHub workflow
-        CANARY_PERCENT: '0',  // Default to 0 until GitHub sets it
+        STABLE_ALIAS_ARN: '', 
+        CANARY_ALIAS_ARN: '', 
+        CANARY_PERCENT: '0', 
       },
     });
 
-    // Permissions
-    mainQueue.grantConsumeMessages(routingLambda);
-    processingLambda.grantInvoke(routingLambda); // Allow invoke for all versions
 
-    // SQS trigger to Routing Lambda
+    mainQueue.grantConsumeMessages(routingLambda);
+    processingLambda.grantInvoke(routingLambda); 
+
+  
     routingLambda.addEventSource(new lambdaEventSources.SqsEventSource(mainQueue,{
       batchSize:1
     }));
