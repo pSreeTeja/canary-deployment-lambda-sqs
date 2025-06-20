@@ -14,6 +14,7 @@ export class CanaryDepStack extends cdk.Stack {
 
     // Processing Lambda (versioning handled in GitHub workflow)
     const processingLambda = new lambda.Function(this, 'ProcessingLambda', {
+      functionName: 'ProcessingLambda',
       runtime: lambda.Runtime.PYTHON_3_11,
       code: lambda.Code.fromAsset('lambda/processing'),
       handler: 'index.lambda_handler',
@@ -21,6 +22,7 @@ export class CanaryDepStack extends cdk.Stack {
 
     // Routing Lambda
     const routingLambda = new lambda.Function(this, 'RoutingLambda', {
+      functionName: 'RoutingLambda',
       runtime: lambda.Runtime.PYTHON_3_11,
       code: lambda.Code.fromAsset('lambda/routing'),
       handler: 'index.lambda_handler',
